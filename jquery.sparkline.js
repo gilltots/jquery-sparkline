@@ -704,7 +704,7 @@
                 num_values.push(Number(values[i]));
             }
         }
-        var max = Math.max.apply(Math, num_values),
+        var max = Math.max.apply(Math, num_values) > 0 ? Math.max.apply(Math, num_values) : 0, //if max is < 0, change to 0 to get the yzero and range to be correct
             min = Math.min.apply(Math, num_values);
         if (options.get('chartRangeMin')!==undefined && (options.get('chartRangeClip') || options.get('chartRangeMin')<min)) {
             min = options.get('chartRangeMin');
