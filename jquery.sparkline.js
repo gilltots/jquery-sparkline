@@ -704,8 +704,8 @@
                 num_values.push(Number(values[i]));
             }
         }
-        var max = Math.max.apply(Math, num_values) > 0 ? Math.max.apply(Math, num_values) : 0, //if max is < 0, change to 0 to get the yzero and range to be correct
-            min = Math.min.apply(Math, num_values);
+        var max = Math.max.apply(Math, num_values) > 0 ? Math.max.apply(Math, num_values) : 0, //if min is > 0, change to 0 since we want to concern ourselves with the range from the lowest value back up to the xaxis
+            min = Math.min.apply(Math, num_values) < 0 ? Math.min.apply(Math, num_values) : 0; //if min is > 0, change to 0 since we want to concern ourselves with the range from the highest value back down to the xaxis
         if (options.get('chartRangeMin')!==undefined && (options.get('chartRangeClip') || options.get('chartRangeMin')<min)) {
             min = options.get('chartRangeMin');
         }
@@ -714,7 +714,7 @@
         }
         var zeroAxis = options.get('zeroAxis');
         if (zeroAxis === undefined) {
-            zeroAxis = min<0;
+            zeroAxis = false;//min<0;
         }
         var range = max-min === 0 ? 1 : max-min;
 
@@ -730,9 +730,18 @@
         var target = $(this).simpledraw(width, height, options.get('composite'));
         if (target) {
             var color,
-                canvas_height = target.pixel_height,
-                yzero = min<0 && zeroAxis ? canvas_height-Math.round(canvas_height * (Math.abs(min)/range))-1 : canvas_height-1;
-
+                canvas_height = target.pixel_height;
+            var yzero;
+            if (zeroAxis) {
+              yzero = canvas_height / 2;
+            } else if (max < 0) { //all below x axis, xaxis at top of canvas
+              yzero = 1;
+            } else if (min >= 0) {//all above x axis, xaxis at bottom of canvas
+              yzero = canvas_height-1;
+            } else { //some above and some below, so put xaxis max pixels down canvas
+              yzero = Math.round(canvas_height * (max / range)) + 1;
+            }
+            target.drawRect(0,yzero, width, 0, "#c6c6c6", "#c6c6c6"); //draw xaxis
             for(i=values.length; i--;) {
                 var x = i*(options.get('barWidth')+options.get('barSpacing')),
                     y, 
@@ -747,21 +756,13 @@
                         continue;
                     }
                 } else {
-                    if (val < min) {
-                        val=min;
-                    }
-                    if (val > max) {
-                        val=max;
-                    }
                     color = (val < 0) ? options.get('negBarColor') : options.get('barColor');
-                    if (zeroAxis && min<0) {
-                        height = Math.round(canvas_height*((Math.abs(val)/range)))+1;
-                        y = (val < 0) ? yzero : yzero-height;
-                    } else {
-                        var adjustedVal = (val - min == 0) ? val : val - min;
-                        height = Math.round(canvas_height*(adjustedVal/range))+1;
-                        y = canvas_height-height;
-                    }
+
+                    height = Math.round(canvas_height*((Math.abs(val)/range)));
+
+                    if (zeroAxis) {height = Math.round(height / 2); }
+                    y = yzero;
+                    if (val > 0) {height = -height; }
                     if (val===0 && options.get('zeroColor')!==undefined) {
                         color = options.get('zeroColor');
                     }
@@ -774,7 +775,7 @@
                         continue;
                     }
                 }
-                target.drawRect(x, y, options.get('barWidth')-1, height-1, color, color);
+                target.drawRect(x, y, options.get('barWidth')-1, height, color, color);
             }
         } else {
             // Remove the tag contents if sparklines aren't supported
